@@ -54,6 +54,20 @@ jobs:
             --title "Map packs ${{ steps.cat.outputs.tag }}" \
             --notes "Offline map packs for Fish N Map. Map data © OpenStreetMap contributors (ODbL), basemap by Protomaps. $DEPTH"
 
+      # پرانی ریلیز ہٹائیں تاکہ جگہ نہ بھرے؛ ایپ ہمیشہ تازہ ترین ریلیز استعمال کرتی ہے
+      - name: Remove older releases
+        if: github.repository == 'yasirjalalkhan-collab/fishnmap-maps'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          NEW_TAG: ${{ steps.cat.outputs.tag }}
+        run: |
+          gh release list --repo "${{ github.repository }}" --limit 100 --json tagName --jq '.[].tagName' |
+          while read -r t; do
+            if [ -n "$t" ] && [ "$t" != "$NEW_TAG" ]; then
+              gh release delete "$t" --repo "${{ github.repository }}" --yes --cleanup-tag
+            fi
+          done
+
       - name: Test artifact
         if: github.repository != 'yasirjalalkhan-collab/fishnmap-maps'
         uses: actions/upload-artifact@v4
