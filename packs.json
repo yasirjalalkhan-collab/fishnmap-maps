@@ -1,0 +1,10 @@
+{
+  "packs": [
+    { "id": "karachi",    "name": "Karachi (Charna, Cape Monze)",          "bbox": [66.30, 24.40, 67.60, 25.20] },
+    { "id": "sindh-east", "name": "Sindh east coast (Ibrahim Hyderi to Keti Bandar)", "bbox": [66.90, 23.65, 68.10, 24.95] },
+    { "id": "hub-ormara", "name": "Hub to Ormara",                         "bbox": [64.40, 24.60, 66.85, 25.75] },
+    { "id": "pasni-jiwani", "name": "Pasni to Jiwani",                     "bbox": [61.55, 24.70, 63.75, 25.55] }
+  ],
+  "maxzoom": 13,
+  "depths": [5, 10, 20, 30, 50, 100, 200]
+}

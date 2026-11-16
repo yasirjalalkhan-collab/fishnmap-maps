@@ -1,0 +1,63 @@
+name: Build map packs
+
+on:
+  workflow_dispatch:
+  push:
+    branches: [main]
+    paths: [packs.json, scripts/**, .github/workflows/build-packs.yml]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: build-packs
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Tools
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq gdal-bin tippecanoe jq > /dev/null
+          mkdir -p /tmp/pmt
+          gh release download --repo protomaps/go-pmtiles --pattern '*Linux_x86_64.tar.gz' --dir /tmp/pmt
+          tar -xzf /tmp/pmt/*.tar.gz -C /tmp/pmt
+          sudo install /tmp/pmt/pmtiles /usr/local/bin/pmtiles
+          gdalinfo --version; tippecanoe --version 2>&1 | head -1; pmtiles version || true
+
+      - name: Build packs
+        run: scripts/build.sh
+
+      - name: Catalog
+        id: cat
+        run: |
+          TAG="maps-$(date -u +%Y%m%d)-${{ github.run_number }}"
+          echo "tag=$TAG" >> "$GITHUB_OUTPUT"
+          python3 scripts/make_catalog.py dist "$TAG" "${{ github.repository }}"
+
+      # صرف عوامی نقشہ ریپو میں ریلیز؛ کسی اور جگہ صرف آزمائشی آرٹیفیکٹ
+      - name: Publish release
+        if: github.repository == 'yasirjalalkhan-collab/fishnmap-maps'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          DEPTH=$(jq -r 'if .depth then "Depth lines: " + .depth.attribution + " — not for navigation." else "No depth lines in this release." end' dist/catalog.json)
+          gh release create "${{ steps.cat.outputs.tag }}" dist/*.pmtiles dist/catalog.json \
+            --title "Map packs ${{ steps.cat.outputs.tag }}" \
+            --notes "Offline map packs for Fish N Map. Map data © OpenStreetMap contributors (ODbL), basemap by Protomaps. $DEPTH"
+
+      - name: Test artifact
+        if: github.repository != 'yasirjalalkhan-collab/fishnmap-maps'
+        uses: actions/upload-artifact@v4
+        with:
+          name: map-packs-test
+          path: dist/
+          retention-days: 3
